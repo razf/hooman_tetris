@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 
-from utils import load_cutout_to_contours_and_fill, preprocess_frame
+from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours
 
 cutout_path = r"cutouts\sample_cutout.png"
-fill, contours = load_cutout_to_contours_and_fill(cutout_path)
+fill, contours = load_cutout_to_contours_and_fill(cutout_path, (640,480))
 
 cap = cv2.VideoCapture(0)
 
@@ -12,37 +12,34 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     raise IOError("Cannot open webcam")
 
-started_bg = False
-has_bg = False
-bg_intensity_threshold = 50
-bg_counter = 0
+final_bg = cv2.imread("background.png")
 # Main loop
 while True:
     ret, frame = cap.read()
-    pframe = preprocess_frame(frame)
-    if not started_bg:
-        bg_img = pframe.astype(np.float32)
-        bg_int8 = cv2.convertScaleAbs(bg_img)
-        final_bg = pframe
-        started_bg = True
-    elif not has_bg:
-        bg_img = cv2.accumulateWeighted(pframe, bg_img, 0.05)
-        bg_int8 = cv2.convertScaleAbs(bg_img)
-        diff = cv2.absdiff(pframe, bg_int8)
-        if diff[diff > 50].sum() < 100:
-            bg_counter += 1
-        else:
-            bg_counter = 0
-        if bg_counter > 60:
-            final_bg = bg_int8
-            has_bg = True
-        print(diff[diff > 50].sum())
+    pframe = preprocess_frame(frame, scale_size=1)
 
-    diff = cv2.absdiff(pframe, final_bg)
+    final_bg_blur = cv2.blur(final_bg, (5,5))
+    pframe_blur = cv2.blur(pframe, (5,5))
 
+    final_bg_blur_g = cv2.cvtColor(final_bg_blur, cv2.COLOR_RGB2GRAY)
+    bg_pixel = final_bg_blur_g[80,80]
 
+    pframe_g = cv2.cvtColor(pframe_blur, cv2.COLOR_RGB2GRAY)
+    pframe_g = pframe_g*(bg_pixel/pframe_g[80,80]) #Normalize
+    pframe_g = pframe_g.astype(np.uint8)
 
-    cv2.imshow('Input', np.hstack([pframe, bg_int8, diff]))
+    diff = cv2.absdiff(pframe_g, final_bg_blur_g)
+    diff = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)[1]
+
+    kernel_erode = np.ones((5, 5), np.uint8)
+    kernel_dilate = np.ones((7, 7), np.uint8)
+    er_image = cv2.erode(diff, kernel_erode, iterations=2)
+    dil_image = cv2.dilate(er_image, kernel_dilate, iterations=3)
+    diff=dil_image
+
+    pframe_g = draw_contours(pframe_g, contours)
+
+    cv2.imshow('Input', np.hstack([pframe_g, final_bg_blur_g, cv2.absdiff(diff,fill)]))
 
     c = cv2.waitKey(1)
     if c == 27:
