@@ -7,10 +7,10 @@ def load_cutout_to_contours_and_fill(img_path, resize_dst_size = None):
     if resize_dst_size is not None:
         alpha = cv2.resize(alpha,resize_dst_size)
     contours, hierarchy = cv2.findContours(alpha, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    alpha = cv2.cvtColor(alpha, cv2.COLOR_GRAY2RGB)
     return alpha, contours
 
-def preprocess_frame(frame, scale_size):
-    frame = cv2.resize(frame, None, fx=scale_size, fy=scale_size, interpolation=cv2.INTER_AREA)
+def preprocess_frame(frame):
     frame = np.fliplr(frame)
     return frame
 
@@ -26,4 +26,8 @@ def extract_diff_from_bg(frame, bg, diff_intensity_thresh=30):
     kernel_dilate = np.ones((3, 3), np.uint8)
     er_image = cv2.erode(diff, kernel_erode, iterations=2)
     dil_image = cv2.dilate(er_image, kernel_dilate, iterations=3)
-    return dil_image
+    diff = dil_image
+    diff[np.sum((diff == 255), axis=2) > 1] = 255
+    diff[np.sum((diff == 255), axis=2) <= 1] = 0
+
+    return diff
