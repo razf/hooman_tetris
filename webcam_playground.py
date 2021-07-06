@@ -1,10 +1,7 @@
 import cv2
-import os.path as osp
 import numpy as np
-from utils import load_cutout_to_contours_and_fill
-fps = 60
-fnum = 1
-save_path = r"C:\Code\Datathon\Playground"
+
+from utils import load_cutout_to_contours_and_fill, preprocess_frame
 
 cutout_path = r"cutouts\sample_cutout.png"
 fill, contours = load_cutout_to_contours_and_fill(cutout_path)
@@ -15,19 +12,38 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     raise IOError("Cannot open webcam")
 
-cnt = 0
+started_bg = False
+has_bg = False
+bg_intensity_threshold = 50
+bg_counter = 0
+# Main loop
 while True:
     ret, frame = cap.read()
-    frame = cv2.resize(frame, None, fx=2, fy=2, interpolation=cv2.INTER_AREA)
-    frame = np.fliplr(frame)
-    frame = cv2.drawContours(frame, contours, -1, (255,255,255), 10)
-    cv2.imshow('Input', frame)
+    pframe = preprocess_frame(frame)
+    if not started_bg:
+        bg_img = pframe.astype(np.float32)
+        bg_int8 = cv2.convertScaleAbs(bg_img)
+        final_bg = pframe
+        started_bg = True
+    elif not has_bg:
+        bg_img = cv2.accumulateWeighted(pframe, bg_img, 0.05)
+        bg_int8 = cv2.convertScaleAbs(bg_img)
+        diff = cv2.absdiff(pframe, bg_int8)
+        if diff[diff > 50].sum() < 100:
+            bg_counter += 1
+        else:
+            bg_counter = 0
+        if bg_counter > 60:
+            final_bg = bg_int8
+            has_bg = True
+        print(diff[diff > 50].sum())
 
-    cnt+=1
-    if cnt >= 120:
-        cnt=0
-        # cv2.imwrite(osp.join(save_path,f"{fnum}.png"), frame)
-        fnum+=1
+    diff = cv2.absdiff(pframe, final_bg)
+
+
+
+    cv2.imshow('Input', np.hstack([pframe, bg_int8, diff]))
+
     c = cv2.waitKey(1)
     if c == 27:
         break
