@@ -15,7 +15,7 @@ def preprocess_frame(frame, scale_size):
     return frame
 
 def draw_contours(frame, contours):
-    frame = cv2.drawContours(frame, contours, -1, (255,255,255), 10)
+    frame = cv2.drawContours(frame, contours, -1, (255,255,255), 5)
     return frame
 
 
@@ -23,7 +23,7 @@ def extract_diff_from_bg(frame, bg, diff_intensity_thresh=30):
     diff = cv2.absdiff(frame, bg)
     diff = cv2.threshold(diff, diff_intensity_thresh, 255, cv2.THRESH_BINARY)[1]
     kernel_erode = np.ones((5, 5), np.uint8)
-    kernel_dilate = np.ones((7, 7), np.uint8)
+    kernel_dilate = np.ones((3, 3), np.uint8)
     er_image = cv2.erode(diff, kernel_erode, iterations=2)
     dil_image = cv2.dilate(er_image, kernel_dilate, iterations=3)
     return dil_image

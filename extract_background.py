@@ -3,7 +3,7 @@ import numpy as np
 
 from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours
 
-cutout_path = r"cutouts\sample_cutout.png"
+cutout_path = r"cutouts\raz_cutout.png"
 fill, contours = load_cutout_to_contours_and_fill(cutout_path, (640,480))
 
 cap = cv2.VideoCapture(0)
