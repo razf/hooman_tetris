@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 
-from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours
+from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours, extract_diff_from_bg
 
-cutout_path = r"cutouts\sample_cutout.png"
+cutout_path = r"cutouts\raz_cutout.png"
 fill, contours = load_cutout_to_contours_and_fill(cutout_path, (640,480))
 
 cap = cv2.VideoCapture(0)
@@ -12,7 +12,8 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     raise IOError("Cannot open webcam")
 
-final_bg = cv2.imread("background.png")
+final_bg = cv2.imread("background2.png")
+
 # Main loop
 while True:
     ret, frame = cap.read()
@@ -28,14 +29,7 @@ while True:
     pframe_g = pframe_g*(bg_pixel/pframe_g[80,80]) #Normalize
     pframe_g = pframe_g.astype(np.uint8)
 
-    diff = cv2.absdiff(pframe_g, final_bg_blur_g)
-    diff = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)[1]
-
-    kernel_erode = np.ones((5, 5), np.uint8)
-    kernel_dilate = np.ones((7, 7), np.uint8)
-    er_image = cv2.erode(diff, kernel_erode, iterations=2)
-    dil_image = cv2.dilate(er_image, kernel_dilate, iterations=3)
-    diff=dil_image
+    diff = extract_diff_from_bg(pframe_g, final_bg_blur_g)
 
     pframe_g = draw_contours(pframe_g, contours)
 
