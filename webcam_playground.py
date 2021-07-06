@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+import queue
 from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours, extract_diff_from_bg
 
 cutout_path = r"cutouts\raz_cutout.png"
@@ -12,8 +12,8 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     raise IOError("Cannot open webcam")
 
-final_bg = cv2.imread("background2.png")
-
+final_bg = cv2.imread("background.png")
+queue = []
 
 # Main loop
 def calc_similarity(diff, target):
@@ -40,7 +40,16 @@ while True:
     pframe_g = draw_contours(pframe_g, contours)
     sim_image = cv2.absdiff(diff, fill)
     similarity = calc_similarity(diff, fill)
-    sim_image = cv2.putText(sim_image, "{:.3f}".format(similarity), (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+
+    queue.append(similarity)
+    if len(queue) > 50:
+        queue.pop(0)
+    sim_avg = np.average(queue)
+
+    sim_image = cv2.putText(sim_image, "{:.3f}, {:.3f}".format(similarity,sim_avg), (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+    if sim_avg > 0.94:
+        sim_image = cv2.putText(sim_image, "You Did it!".format(similarity, sim_avg), (300, 40),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
 
     cv2.imshow('Input', np.hstack([pframe_g, final_bg_blur_g, sim_image]))
 
