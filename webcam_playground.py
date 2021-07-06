@@ -1,8 +1,10 @@
 import cv2
+import pathlib
 import os.path as osp
 
 fps = 60
-save_path = r"C:\Code\Datathon\Playground"
+cur_path = str(pathlib.Path().resolve())
+images_save_path = cur_path + r'\\Playground'
 cap = cv2.VideoCapture(0)
 fnum = 1
 # Check if the webcam is opened correctly
@@ -16,9 +18,9 @@ while True:
     cv2.imshow('Input', frame)
 
     cnt+=1
-    if cnt >= 120:
+    if cnt >= fps:
         cnt=0
-        cv2.imwrite(osp.join(save_path,f"{fnum}.png"), frame)
+        cv2.imwrite(osp.join(images_save_path, f"{fnum}.png"), frame)
         fnum+=1
     c = cv2.waitKey(1)
     if c == 27:
