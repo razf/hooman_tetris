@@ -1,10 +1,28 @@
 import cv2
 import numpy as np
-import queue
+from time import time
 from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours, extract_diff_from_bg
 
-cutout_path = r"cutouts\cutout4.png"
-cutouts = [f"cutouts\\cutout{i}.png" for i in range(1,6)]
+logo = cv2.imread("logo.png")
+sig = cv2.imread("sig.png")
+
+logo = cv2.resize(logo, None, fx=0.2, fy=0.2, interpolation=cv2.INTER_AREA)
+sig = cv2.resize(sig, None, fx=0.2, fy=0.2, interpolation=cv2.INTER_AREA)
+
+logo_full_im = np.zeros((960, 1280, 3))
+logo_full_im[10:logo.shape[0] + 10, 10:logo.shape[1] + 10] = logo
+logo_full_im[logo_full_im==255] = 0
+logo_full_im = logo_full_im.astype(np.uint8)
+
+print(sig.shape)
+sig_full_im = np.zeros((960, 1280, 3))
+sig_full_im[870:sig.shape[0] + 870, 870:sig.shape[1] + 870] = sig
+sig_full_im[sig_full_im==255] = 0
+sig_full_im = sig_full_im.astype(np.uint8)
+
+# cv2.imshow("meh", logo_full_im)
+
+cutouts = [f"cutouts\\cutout{i}.png" for i in range(1, 8)]
 curr_cutout = 0
 fill, contours = load_cutout_to_contours_and_fill(cutouts[0], (640, 480))
 
@@ -17,10 +35,12 @@ if not cap.isOpened():
 final_bg = cv2.imread("background.png")
 queue = []
 
+
 # Main loop
 def calc_similarity(diff, target):
-    delta = cv2.absdiff(diff[60:420,:], target[60:420,:])
+    delta = cv2.absdiff(diff[60:420, :], target[60:420, :])
     return (delta == 0).sum() / delta.size
+
 
 front_img = None
 
@@ -28,12 +48,12 @@ front_img = None
 def calc_sim_image(diff, target):
     delta = cv2.absdiff(diff, target)
 
-    # delta = cv2.absdiff(diff[60:420,:], target[60:420,:])
-    # delta = np.vstack([np.zeros((60, delta.shape[1], delta.shape[2])),delta,np.zeros((60, delta.shape[1], delta.shape[2]))])
     return delta
 
-score=0
+
+score = 0
 num_succ_in_a_row = 0
+start_time = time()
 while True:
     ret, frame = cap.read()
     pframe = preprocess_frame(frame)
@@ -59,26 +79,49 @@ while True:
         queue.pop(0)
     sim_avg = np.average(queue)
 
-    sim_image = cv2.putText(sim_image, "{:.3f}, {:.3f}".format(similarity,sim_avg), (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+    sim_image = cv2.putText(sim_image, "{:.3f}, {:.3f}".format(similarity, sim_avg), (20, 40), cv2.FONT_HERSHEY_SIMPLEX,
+                            1, (255, 255, 255))
     if sim_avg > 0.94:
         pframe = cv2.putText(pframe, "You Did it!".format(similarity, sim_avg), (250, 40),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-        num_succ_in_a_row+=1
+                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+        num_succ_in_a_row += 1
     else:
-        num_succ_in_a_row=0
+        num_succ_in_a_row = 0
     if num_succ_in_a_row > 10:
-        num_succ_in_a_row=0
-        curr_cutout+=1
-        score+=1
-        fill, contours = load_cutout_to_contours_and_fill(cutouts[curr_cutout], (640, 480))
+        num_succ_in_a_row = 0
+        curr_cutout += 1
+        score += 1
+        try:
+            fill, contours = load_cutout_to_contours_and_fill(cutouts[curr_cutout], (640, 480))
+        except:
+            break
 
     pframe = cv2.putText(pframe, "Score: {}".format(score), (20, 460),
                          cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
 
     pframe = cv2.resize(pframe, None, fx=2, fy=2, interpolation=cv2.INTER_AREA)
-    print(diff.shape, sim_image.shape)
-    cv2.imshow('Input', np.hstack([pframe,np.vstack([diff, sim_image])]))
+    print(pframe.shape, logo_full_im.shape)
+    pframe+=logo_full_im
+    pframe+=sig_full_im
 
+    pframe = cv2.putText(pframe, "Time: {:.2f}".format(time()-start_time), (1060, 60),
+                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+
+    # pframe = cv2.addWeighted(pframe, 0.4, logo_full_im, 0.1, 0)
+    cv2.imshow('Input', np.hstack([pframe, np.vstack([diff, sim_image])]))
+
+    c = cv2.waitKey(1)
+    if c == 27:
+        break
+final_frame = np.zeros((960, 1280, 3))
+final_frame = cv2.putText(final_frame, "Hooray! You finished Hooman Tetris in {:.2f} seconds!".format(time() - start_time), (200, 450),
+                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+
+final_frame = cv2.putText(final_frame, "we hope you enjoyed the game :)", (350, 500),
+                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+
+while True:
+    cv2.imshow('Input', final_frame)
     c = cv2.waitKey(1)
     if c == 27:
         break
