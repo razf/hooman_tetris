@@ -4,7 +4,7 @@ import queue
 from utils import load_cutout_to_contours_and_fill, preprocess_frame, draw_contours, extract_diff_from_bg
 
 cutout_path = r"cutouts\cutout4.png"
-cutouts = [f"cutouts\\cutout{i}.png" for i in range(1,5)]
+cutouts = [f"cutouts\\cutout{i}.png" for i in range(1,6)]
 curr_cutout = 0
 fill, contours = load_cutout_to_contours_and_fill(cutouts[0], (640, 480))
 
@@ -19,7 +19,7 @@ queue = []
 
 # Main loop
 def calc_similarity(diff, target):
-    delta = cv2.absdiff(diff, target)
+    delta = cv2.absdiff(diff[60:420,:], target[60:420,:])
     return (delta == 0).sum() / delta.size
 
 front_img = None
@@ -28,6 +28,8 @@ front_img = None
 def calc_sim_image(diff, target):
     delta = cv2.absdiff(diff, target)
 
+    # delta = cv2.absdiff(diff[60:420,:], target[60:420,:])
+    # delta = np.vstack([np.zeros((60, delta.shape[1], delta.shape[2])),delta,np.zeros((60, delta.shape[1], delta.shape[2]))])
     return delta
 
 score=0
@@ -74,7 +76,7 @@ while True:
                          cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
 
     pframe = cv2.resize(pframe, None, fx=2, fy=2, interpolation=cv2.INTER_AREA)
-
+    print(diff.shape, sim_image.shape)
     cv2.imshow('Input', np.hstack([pframe,np.vstack([diff, sim_image])]))
 
     c = cv2.waitKey(1)

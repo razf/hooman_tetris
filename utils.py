@@ -23,7 +23,7 @@ def extract_diff_from_bg(frame, bg, diff_intensity_thresh=30):
     diff = cv2.absdiff(frame, bg)
     diff = cv2.threshold(diff, diff_intensity_thresh, 255, cv2.THRESH_BINARY)[1]
     kernel_erode = np.ones((5, 5), np.uint8)
-    kernel_dilate = np.ones((3, 3), np.uint8)
+    kernel_dilate = np.ones((5, 5), np.uint8)
     er_image = cv2.erode(diff, kernel_erode, iterations=2)
     dil_image = cv2.dilate(er_image, kernel_dilate, iterations=3)
     diff = dil_image
